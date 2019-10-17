@@ -1,0 +1,25 @@
+if [@metadata][es_index] == "index-name"{
+        if [message] =~ "\b^d|\b^b\b"  {
+ csv   {
+    skip_empty_columns => "true"
+    separator => ","
+    columns => ["type","timeLogged","timeQueued","orig","rcpt","orcpt",""header_Message-ID"]}
+ geoip {
+    id  => "DestinationIp"
+    source  => "dlvDestinationIp"
+    target => "DestinationIP"
+    fields => ["region_name","city_name","country_name","ip","location"]}
+ date  {
+    match  => ["timeLogged", "yyyy-MM-dd HH:mm:ssZ"]
+    target => "time-Logged" }
+ date  {
+    match  => ["timeQueued", "yyyy-MM-dd HH:mm:ssZ"]
+    target => "time-Queued"}
+ ruby  {
+    init => "require 'time'"
+    code => "diff = event.get('time-Logged') - event.get('time-Queued')
+               event.set('Delay',diff);" }
+ mutate {
+    convert  => ["dlvSize","integer"]
+    }
+}
