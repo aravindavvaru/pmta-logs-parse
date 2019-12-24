@@ -1,0 +1,39 @@
+input {
+ file {
+    path => "/path/to/file.csv"
+    start_position => "beginning"
+    sincedb_path => "/dev/null"
+ }
+}
+filter {
+csv {
+    columns => ["type","timeLogged","timeQueued","orig","rcpt","orcpt","dsnAction","dsnStatus","dsnDiag","dsnMta","bounceCat","srcType","srcMta","dlvType","dlvSourceIp","dlvDestinationIp","dlvEsmtpAvailable","dlvSize","vmta","jobId","envId","queue","vmtaPool","dlvTlsProtocol","dlvTlsCipher"]
+    separator => ","
+    skip_empty_columns => "true"
+    skip_empty_rows => "true"
+ }
+ date {
+    match  => ["timeLogged", "yyyy-MM-dd HH:mm:ssZ"]
+    target => "time-Logged"
+}
+ date {
+    match  => ["timeQueued", "yyyy-MM-dd HH:mm:ssZ"]
+    target => "time-Queued"
+ }
+ ruby {
+     init => "require 'time'"
+     code => "diff = event.get('time-Logged') - event.get('time-Queued')
+     event.set('Delay',diff);"
+  }
+  mutate {
+    convert  => ["dlvSize","integer"]
+    remove_field => ["path","host","message","timeLogged","timeQueued","orcpt","dsnAction","srcType","dlvType","dlvEsmtpAvailable","jobId","envId","dlvTlsProtocol","dlvTlsCipher"]
+   }
+}
+
+output {
+ elasticsearch {
+    hosts => "https://localhost:9200"
+  
+ }
+}
