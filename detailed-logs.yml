@@ -1,0 +1,36 @@
+# config file for accounting logs
+input {
+ file {
+   path => "/tmp/test.log"
+   start_position => "beginning"
+   sincedb_path => "/dev/null"
+  }
+}
+
+
+filter {
+   grok {
+     match => ["message","%{TIMESTAMP_ISO8601:Time} \(%{WORD:NETWORK}\s%{NUMBER:PID}\)\<\<\<%{GREEDYDATA:log}"]
+     match => ["message","%{TIMESTAMP_ISO8601:Time} \(%{WORD:NETWORK}\s%{NUMBER:PID}\)\>\>\>%{GREEDYDATA:log}"]
+     match => ["message","%{TIMESTAMP_ISO8601:Time} \(%{NOTSPACE:NETWORK}\s%{NUMBER:PID}\)%{GREEDYDATA:log}"]
+   }
+   aggregate {
+      task_id => "%{PID}"
+      code => "
+         map['log1'] ||= []
+         map['log1'] << {'log1' => event.get('message')}
+           "
+       push_map_as_event_on_timeout => true
+       timeout => 2
+    }
+  mutate{
+    remove_field => ["message"]
+        }
+ }
+
+
+output {
+ elasticsearch {
+    hosts => "https://localhost:9200"
+   }
+}
